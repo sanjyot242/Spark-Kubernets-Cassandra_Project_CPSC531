@@ -12,14 +12,15 @@ import org.apache.spark.sql.SparkSession;
 import static org.apache.spark.sql.functions.*;
 
 public class FlightDelayAnalysis {
-
+    private static CassandraUtil cassandraUtil;
     public static void main(String[] args) {
 
         if (args.length < 2) {
             System.err.println("Usage: Main <CassandraHost> <CassandraPort>");
             System.exit(1);
         }
-        CassandraUtil cassandraUtil = new CassandraUtil(args[0], Integer.parseInt(args[1]));
+
+        cassandraUtil = new CassandraUtil(args[0], Integer.parseInt(args[1]));
 
         // Setup Spark configuration
         SparkConf conf = setupSparkConf(args);
@@ -31,10 +32,10 @@ public class FlightDelayAnalysis {
 
         Dataset<Row> df = analysis.loadDataAndInitialTransform(spark);
          df = analysis.addDerivedColumns(df);
-        analysis.saveToCassandra(df,"Flight_Delay_Analysis","Cleaned_Data");
+        analysis.saveToCassandra(df,"Flight_Delay_Analysis","Cleaned_data","ETL");
         Dataset<Row> monthlyDelays = analysis.calculateMonthlyAverageDelays(df);
         //Dataset<Row> timeSeriesData = analysis.prepareDelayTimeSeries(df);
-        analysis.saveToCassandra(monthlyDelays, "Flight_Delay_Analysis", "monthly_delay_stats");
+        analysis.saveToCassandra(monthlyDelays, "Flight_Delay_Analysis", "monthly_delay_stats","Monthly_Delay");
 
 //        // Read data from Cassandra
 //        Dataset<Row> dataset = spark.read()
@@ -72,15 +73,13 @@ public class FlightDelayAnalysis {
         return monthlyAvgDelays;
     }
 
-    public Dataset<Row> prepareDelayTimeSeries(Dataset<Row> df) {
-        Dataset<Row> timeSeriesData = df.select(col("flight_date"), col("dep_delay_minutes"), col("arr_delay_minutes"));
-        return timeSeriesData;
-    }
 
-    public void saveToCassandra(Dataset<Row> df, String keyspace, String table) {
-        try(CqlSession session = CassandraUtil.createSession()) {
+
+    public void saveToCassandra(Dataset<Row> df, String keyspace, String table,String analysisName) {
+        try(CqlSession session = cassandraUtil.createSession()) {
             createKeyspaceIfNotExists(session,keyspace);
-            createTableIfNotExists(session,keyspace,table);
+            cassandraUtil.dropTable(session,keyspace,table);
+            cassandraUtil.createTable(session,keyspace,table,analysisName);
 
 
             df.write()
@@ -112,14 +111,15 @@ public class FlightDelayAnalysis {
         System.out.println("Keyspace checked/created");
     }
 
-    private void createTableIfNotExists(CqlSession session,String Keyspace ,String Table) {
-
-        session.execute(SchemaBuilder.createTable(Keyspace, Table)
-                .ifNotExists()
-                .withPartitionKey("month", DataTypes.INT)
-                .withColumn("average_departure_delay", DataTypes.DOUBLE)
-                .withColumn("average_arrival_delay", DataTypes.DOUBLE)
-                .build());
-        System.out.println("Table checked/created");
-    }
+//    private void createTableIfNotExists(CqlSession session,String Keyspace ,String Table) {
+//        cassandraUtil.dropTable(session,Keyspace,Table);
+//        cassandraUtil.createTable(session,Keyspace,Table);
+//        session.execute(SchemaBuilder.createTable(Keyspace, Table)
+//                .ifNotExists()
+//                .withPartitionKey("month", DataTypes.INT)
+//                .withColumn("average_departure_delay", DataTypes.DOUBLE)
+//                .withColumn("average_arrival_delay", DataTypes.DOUBLE)
+//                .build());
+//        System.out.println("Table checked/created");
+//    }
 }
