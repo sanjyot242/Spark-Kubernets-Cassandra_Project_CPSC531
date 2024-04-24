@@ -1,0 +1,15 @@
+worker:
+  persistence:
+    enabled: true
+    storageClass: "standard"  # Change this based on your cluster's storage class
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+
+master:
+  persistence:
+    enabled: true
+    storageClass: "standard"
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi

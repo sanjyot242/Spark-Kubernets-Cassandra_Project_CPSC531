@@ -1,0 +1,9 @@
+./bin/spark-submit \
+--class org.example.Main \
+--master spark://my-spark-master-0.my-spark-headless.default.svc.cluster.local:7077 \
+--num-executors 2 \
+--driver-memory 1g \
+--driver-cores 1 \
+--executor-memory 3g \
+--executor-cores 3 \
+myjars/FlightDelayAnalysis-1.0-SNAPSHOT.jar "10.244.0.6" "9042"
