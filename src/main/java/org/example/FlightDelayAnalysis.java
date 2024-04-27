@@ -9,6 +9,8 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
 
+import java.util.Arrays;
+
 import static org.apache.spark.sql.functions.*;
 
 public class FlightDelayAnalysis {
@@ -28,15 +30,20 @@ public class FlightDelayAnalysis {
                 .config(conf)
                 .getOrCreate();
 
+        //spark.sparkContext().setLogLevel("DEBUG");
+
         FlightDelayAnalysis analysis = new FlightDelayAnalysis();
 
         Dataset<Row> df = analysis.loadDataAndInitialTransform(spark);
-         df = analysis.addDerivedColumns(df);
-        analysis.saveToCassandra(df,"Flight_Delay_Analysis","Cleaned_data","ETL");
-        Dataset<Row> monthlyDelays = analysis.calculateMonthlyAverageDelays(df);
-        //Dataset<Row> timeSeriesData = analysis.prepareDelayTimeSeries(df);
-        analysis.saveToCassandra(monthlyDelays, "Flight_Delay_Analysis", "monthly_delay_stats","Monthly_Delay");
 
+        df = analysis.addDerivedColumns(df);
+        //analysis.saveToCassandra(df,"flight_delay_analysis","cleaned_data","etl");
+        Dataset<Row> monthlyDelays = analysis.calculateMonthlyAverageDelays(df);
+        Dataset<Row> avgAirportDelay = analysis.calculateAirportWithMaxDelay(df);
+        //Dataset<Row> timeSeriesData = analysis.prepareDelayTimeSeries(df);
+        //monthlyDelays.printSchema();
+        analysis.saveToCassandra(monthlyDelays, "flight_delay_analysis", "monthly_delay_stats","Monthly_Delay");
+        analysis.saveToCassandra(avgAirportDelay,"flight_delay_analysis", "airport_delay_stats","Airport_Delay");
 //        // Read data from Cassandra
 //        Dataset<Row> dataset = spark.read()
 //                .format("org.apache.spark.sql.cassandra")
@@ -55,33 +62,71 @@ public class FlightDelayAnalysis {
         Dataset<Row> df = spark.read().parquet("Flight_Delay.parquet");
         df = df.withColumnRenamed("FlightDate","flight_date")
                 .withColumnRenamed("DepDelayMinutes","dep_delay_minutes")
+                .withColumnRenamed("OriginCityName","origin_city_name")
+                .withColumnRenamed("DestCityName","dest_city_name")
+                .withColumnRenamed("CRSDepTime","crs_dep_time")
+                .withColumnRenamed("DepTime","dep_time")
+                .withColumnRenamed("DepDelay","dep_delay")
+                .withColumnRenamed("TaxiOut","taxi_out")
+                .withColumnRenamed("WheelsOff","wheels_off")
+                .withColumnRenamed("WheelsOn","wheels_on")
+                .withColumnRenamed("TaxiIn","taxi_in")
                 .withColumnRenamed("ArrDelayMinutes","arr_delay_minutes")
+                .withColumnRenamed("CRSArrTime","crs_arr_time")
+                .withColumnRenamed("ArrTime","arr_time")///
+                .withColumnRenamed("ArrDelay","arr_delay")
+                .withColumnRenamed("ArrDelayMinutes","arr_delay_minutes")
+                .withColumnRenamed("CRSElapsedTime","crs_elapsed_time")
+                .withColumnRenamed("ActualElapsedTime","actual_elapsed_time")
+                .withColumnRenamed("AirTime","air_time")
+                .withColumnRenamed("Distance","distance")
+                .withColumnRenamed("DistanceGroup","distance_group")
+                .withColumnRenamed("CarrierDelay","carrier_delay")
+                .withColumnRenamed("WeatherDelay","weather_delay")
+                .withColumnRenamed("NASDelay","nas_delay")
+                .withColumnRenamed("SecurityDelay","security_delay")
+                .withColumnRenamed("LateAircraftDelay","late_aircraft_delay")
+                .withColumnRenamed("DayofMonth","day_of_month")
+                .withColumnRenamed("Year","year")
+                .withColumnRenamed("Marketing_Airline_Network","marketing_airline_network")
+                .withColumnRenamed("Month","month")
                 .withColumn("flight_date",to_date(col("flight_date"),"yyyy-MM-dd"));
         return df;
     }
 
     public Dataset<Row> addDerivedColumns(Dataset<Row> df) {
         df = df.withColumn("day_of_week", dayofweek(col("flight_date")))
-                .withColumn("month", month(col("flight_date")));
+                .withColumn("flight_month", month(col("flight_date")));
         return df;
     }
 
     public Dataset<Row> calculateMonthlyAverageDelays(Dataset<Row> df) {
-        Dataset<Row> monthlyAvgDelays = df.groupBy(col("month"))
+        Dataset<Row> monthlyAvgDelays = df.groupBy(col("flight_month"))
                 .agg(avg("dep_delay_minutes").alias("average_departure_delay"),
                         avg("arr_delay_minutes").alias("average_arrival_delay"));
         return monthlyAvgDelays;
     }
 
+    public Dataset<Row> calculateAirportWithMaxDelay(Dataset<Row> df) {
+        Dataset<Row> airportWithMaxDelay = df.groupBy(col("origin_city_name"))
+                .agg(avg("dep_delay_minutes").alias("average_departure_delay"),
+                        avg("arr_delay_minutes").alias("average_arrival_delay"));
+        return airportWithMaxDelay;
+    }
+
+
+
 
 
     public void saveToCassandra(Dataset<Row> df, String keyspace, String table,String analysisName) {
         try(CqlSession session = cassandraUtil.createSession()) {
-            createKeyspaceIfNotExists(session,keyspace);
+            createKeyspaceIfNotExists(session, keyspace);
             cassandraUtil.dropTable(session,keyspace,table);
             cassandraUtil.createTable(session,keyspace,table,analysisName);
 
-
+            if (Arrays.asList(df.columns()).contains("__index_level_0__")) {
+                df = df.drop("__index_level_0__");
+            }
             df.write()
                     .format("org.apache.spark.sql.cassandra")
                     .option("keyspace", keyspace)
@@ -89,7 +134,7 @@ public class FlightDelayAnalysis {
                     .mode(SaveMode.Append)
                     .save();
         }catch(Exception e){
-
+            e.printStackTrace();
         }
 
     }
@@ -99,7 +144,9 @@ public class FlightDelayAnalysis {
         conf.setAppName("Spark Cassandra Integration");
         conf.set("spark.master", "local");
         conf.set("spark.cassandra.connection.host", args[0]);
-        conf.set("spark.cassandra.connection.port", args[1]);// Assuming the port is passed as the second argument
+        conf.set("spark.cassandra.connection.port", args[1]);
+        conf.set("spark.cassandra.connection.timeout_ms", "5000") ; // Increase if needed
+        conf.set("spark.cassandra.read.timeout_ms", "20000");
         return conf;
     }
 

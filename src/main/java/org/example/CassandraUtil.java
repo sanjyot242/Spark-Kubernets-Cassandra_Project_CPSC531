@@ -1,10 +1,13 @@
 package org.example;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTableWithOptions;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 
 public class CassandraUtil {
     private String ipAddress;
@@ -18,9 +21,15 @@ public class CassandraUtil {
     }
 
     public CqlSession createSession() {
+        DriverConfigLoader loader = DriverConfigLoader.programmaticBuilder()
+                .withDuration(DefaultDriverOption.REQUEST_TIMEOUT, Duration.ofSeconds(10))
+                .withDuration(DefaultDriverOption.CONNECTION_CONNECT_TIMEOUT, Duration.ofSeconds(10))
+                .withDuration(DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofSeconds(10)) // Increase timeout to 10 seconds
+                .build();
         return CqlSession.builder()
                 .addContactPoint(new InetSocketAddress(ipAddress, port))
                 .withLocalDatacenter("datacenter1")
+                .withConfigLoader(loader)
                 .build();
     }
 
@@ -36,51 +45,66 @@ public class CassandraUtil {
             case "monthly_delay":
                 configureMonthlyDelayTable(session, keyspace, tableName);
                 break;
+            case"airport_delay":
+                configureAirportDelayTable(session, keyspace, tableName);
+                break;
             default:
                 throw new IllegalArgumentException("Unsupported analysis type: " + analysisType);
         }
         System.out.println("Table created for " + analysisType + " analysis.");
     }
 
+    private void configureAirportDelayTable(CqlSession session, String keyspace, String tableName) {
+        CreateTableWithOptions createTable = SchemaBuilder.createTable(keyspace, tableName).ifNotExists()
+                .withPartitionKey("origin_city_name", DataTypes.TEXT)
+                .withColumn("average_departure_delay", DataTypes.DOUBLE)
+                .withColumn("average_arrival_delay", DataTypes.DOUBLE);
+        session.execute(createTable.build());
+        System.out.println("Table checked/created");
+    }
+
     private void configureEtlTable(CqlSession session, String keyspace, String tableName) {
         CreateTableWithOptions createTable = SchemaBuilder.createTable(keyspace, tableName)
                 .ifNotExists()
-                .withPartitionKey("year", DataTypes.INT)
-                .withPartitionKey("month", DataTypes.INT)
-                .withPartitionKey("day_of_month", DataTypes.INT)
-                .withColumn("flight_date", DataTypes.TEXT)
-                .withColumn("Marketing_Airline_Network", DataTypes.TEXT)
-                .withColumn("OriginCityName", DataTypes.TEXT)
-                .withColumn("DestCityName", DataTypes.TEXT)
-                .withColumn("CRSDepTime", DataTypes.INT)
-                .withColumn("DepTime", DataTypes.DOUBLE)
-                .withColumn("DepDelay", DataTypes.DOUBLE)
-                .withColumn("dep_delay_minutes", DataTypes.DOUBLE)
-                .withColumn("TaxiOut", DataTypes.DOUBLE)
-                .withColumn("WheelsOff", DataTypes.DOUBLE)
-                .withColumn("WheelsOn", DataTypes.DOUBLE)
-                .withColumn("TaxiIn", DataTypes.DOUBLE)
-                .withColumn("CRSArrTime", DataTypes.INT)
-                .withColumn("ArrTime", DataTypes.DOUBLE)
-                .withColumn("ArrDelay", DataTypes.DOUBLE)
-                .withColumn("arr_delay_minutes", DataTypes.DOUBLE)
-                .withColumn("CRSElapsedTime", DataTypes.DOUBLE)
-                .withColumn("ActualElapsedTime", DataTypes.DOUBLE)
-                .withColumn("AirTime", DataTypes.DOUBLE)
-                .withColumn("Distance", DataTypes.DOUBLE)
-                .withColumn("DistanceGroup", DataTypes.INT)
-                .withColumn("CarrierDelay", DataTypes.DOUBLE)
-                .withColumn("WeatherDelay", DataTypes.DOUBLE)
-                .withColumn("NASDelay", DataTypes.DOUBLE)
-                .withColumn("SecurityDelay", DataTypes.DOUBLE)
-                .withColumn("LateAircraftDelay", DataTypes.DOUBLE);
+                .withPartitionKey("year", DataTypes.INT) // Year: converting long to int
+                .withColumn("month", DataTypes.INT) // Month: already integer
+                .withColumn("day_of_month", DataTypes.INT)
+                .withColumn("flight_date", DataTypes.DATE) // flight_date: date
+                .withColumn("marketing_airline_network", DataTypes.TEXT) // Marketing_Airline_Network: string
+                .withColumn("origin_city_name", DataTypes.TEXT) // OriginCityName: string
+                .withColumn("dest_city_name", DataTypes.TEXT) // DestCityName: string
+                .withColumn("crs_dep_time", DataTypes.BIGINT) // CRSDepTime: long
+                .withColumn("dep_time", DataTypes.DOUBLE) // DepTime: double
+                .withColumn("dep_delay", DataTypes.DOUBLE) // DepDelay: double
+                .withColumn("dep_delay_minutes", DataTypes.DOUBLE) // dep_delay_minutes: double
+                .withColumn("taxi_out", DataTypes.DOUBLE) // TaxiOut: double
+                .withColumn("wheels_off", DataTypes.DOUBLE) // WheelsOff: double
+                .withColumn("wheels_on", DataTypes.DOUBLE) // WheelsOn: double
+                .withColumn("taxi_in", DataTypes.DOUBLE) // TaxiIn: double
+                .withColumn("crs_arr_time", DataTypes.BIGINT) // CRSArrTime: long
+                .withColumn("arr_time", DataTypes.DOUBLE) // ArrTime: double
+                .withColumn("arr_delay", DataTypes.DOUBLE) // ArrDelay: double
+                .withColumn("arr_delay_minutes", DataTypes.DOUBLE) // arr_delay_minutes: double
+                .withColumn("crs_elapsed_time", DataTypes.DOUBLE) // CRSElapsedTime: double
+                .withColumn("actual_elapsed_time", DataTypes.DOUBLE) // ActualElapsedTime: double
+                .withColumn("air_time", DataTypes.DOUBLE) // AirTime: double
+                .withColumn("distance", DataTypes.DOUBLE) // Distance: double
+                .withColumn("distance_group", DataTypes.BIGINT) // DistanceGroup: long
+                .withColumn("carrier_delay", DataTypes.DOUBLE) // CarrierDelay: double
+                .withColumn("weather_delay", DataTypes.DOUBLE) // WeatherDelay: double
+                .withColumn("nas_delay", DataTypes.DOUBLE) // NASDelay: double
+                .withColumn("security_delay", DataTypes.DOUBLE) // SecurityDelay: double
+                .withColumn("late_aircraft_delay", DataTypes.DOUBLE)
+                .withColumn("day_of_week",DataTypes.TEXT)
+                .withColumn("flight_month",DataTypes.TEXT);// LateAircraftDelay: double
+
         session.execute(createTable.build());
         System.out.println("Table checked/created");
     }
 
     private void configureMonthlyDelayTable(CqlSession session, String keyspace, String tableName) {
         CreateTableWithOptions createTable = SchemaBuilder.createTable(keyspace, tableName).ifNotExists()
-                .withPartitionKey("month", DataTypes.INT)
+                .withPartitionKey("flight_month", DataTypes.INT)
                 .withColumn("average_departure_delay", DataTypes.DOUBLE)
                 .withColumn("average_arrival_delay", DataTypes.DOUBLE);
         session.execute(createTable.build());

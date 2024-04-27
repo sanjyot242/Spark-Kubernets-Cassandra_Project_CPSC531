@@ -7,3 +7,8 @@
 --executor-memory 3g \
 --executor-cores 3 \
 FlightDelayAnalysis-1.0-SNAPSHOT.jar "10.244.0.6" "9042"
+
+
+
+
+            df.select("Year","month","DayofMonth","flight_date","Marketing_Airline_Network","OriginCityName","DestCityName","CRSDepTime","DepTime","DepDelay","dep_delay_minutes","TaxiOut","WheelsOff","WheelsOn","TaxiIn","CRSArrTime","ArrTime","ArrDelay","arr_delay_minutes","CRSElapsedTime","ActualElapsedTime","AirTime","Distance","DistanceGroup","CarrierDelay","WeatherDelay","NASDelay","SecurityDelay","LateAircraftDelay","day_of_week);
