@@ -48,6 +48,9 @@ public class CassandraUtil {
             case"airport_delay":
                 configureAirportDelayTable(session, keyspace, tableName);
                 break;
+            case"airline_delay":
+                configureAirlineDelayTable(session, keyspace, tableName);
+                break;
             default:
                 throw new IllegalArgumentException("Unsupported analysis type: " + analysisType);
         }
@@ -59,6 +62,20 @@ public class CassandraUtil {
                 .withPartitionKey("origin_city_name", DataTypes.TEXT)
                 .withColumn("average_departure_delay", DataTypes.DOUBLE)
                 .withColumn("average_arrival_delay", DataTypes.DOUBLE);
+        session.execute(createTable.build());
+        System.out.println("Table checked/created");
+    }
+
+    private void configureAirlineDelayTable(CqlSession session, String keyspace, String tableName) {
+        CreateTableWithOptions createTable = SchemaBuilder.createTable(keyspace, tableName).ifNotExists()
+                .withPartitionKey("marketing_airline_network", DataTypes.TEXT)
+                .withColumn("average_departure_delay", DataTypes.DOUBLE)
+                .withColumn("average_arrival_delay", DataTypes.DOUBLE)
+                .withColumn("average_carrier_delay", DataTypes.DOUBLE)
+                .withColumn("average_weather_delay", DataTypes.DOUBLE)
+                .withColumn("average_nas_delay", DataTypes.DOUBLE)
+                .withColumn("average_security_delay", DataTypes.DOUBLE)
+                .withColumn("average_late_aircraft_delay", DataTypes.DOUBLE);
         session.execute(createTable.build());
         System.out.println("Table checked/created");
     }

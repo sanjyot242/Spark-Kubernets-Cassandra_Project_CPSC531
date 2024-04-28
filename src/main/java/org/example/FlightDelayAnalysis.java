@@ -1,13 +1,10 @@
 package org.example;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 import org.apache.spark.SparkConf;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SaveMode;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 
 import java.util.Arrays;
 
@@ -30,6 +27,35 @@ public class FlightDelayAnalysis {
                 .config(conf)
                 .getOrCreate();
 
+//        spark.udf().register("airlineFullName", (String abbreviation) -> {
+//            switch (abbreviation) {
+//                case "UA":
+//                    return "United Airlines";
+//                case "DL":
+//                    return "Delta Airlines";
+//                case "F9":
+//                    return "Frontier Airlines";
+//                case "NK":
+//                    return "Spirit Airlines";
+//                case "AA":
+//                    return "American Airlines";
+//                case "WN":
+//                    return "Southwest Airlines";
+//                case "AS":
+//                    return "Alaska Airlines";
+//                case "HA":
+//                    return "Hawaiian Airlines";
+//                case "VX":
+//                    return "Virgin America";
+//                case "B6":
+//                    return "JetBlue Airways";
+//                case "G4":
+//                    return "Allegiant Air";
+//                default:
+//                    return abbreviation; // Return the abbreviation if not found
+//            }
+//        }, DataTypes.StringType);
+
         //spark.sparkContext().setLogLevel("DEBUG");
 
         FlightDelayAnalysis analysis = new FlightDelayAnalysis();
@@ -37,24 +63,22 @@ public class FlightDelayAnalysis {
         Dataset<Row> df = analysis.loadDataAndInitialTransform(spark);
 
         df = analysis.addDerivedColumns(df);
+
+        Dataset<Row> reducedDf = df.select("flight_month","origin_city_name","marketing_airline_network", "carrier_delay", "weather_delay", "nas_delay", "security_delay", "late_aircraft_delay","dep_delay_minutes","arr_delay_minutes");
+
+
+
+        //df.show(5);
         //analysis.saveToCassandra(df,"flight_delay_analysis","cleaned_data","etl");
-        Dataset<Row> monthlyDelays = analysis.calculateMonthlyAverageDelays(df);
-        Dataset<Row> avgAirportDelay = analysis.calculateAirportWithMaxDelay(df);
+        Dataset<Row> monthlyDelays = analysis.calculateMonthlyAverageDelays(reducedDf);
+        Dataset<Row> avgAirportDelay = analysis.calculateAirportWithMaxDelay(reducedDf);
+        Dataset<Row> avgAirLineDelay = analysis.calculateAirLineDelay(reducedDf);
         //Dataset<Row> timeSeriesData = analysis.prepareDelayTimeSeries(df);
         //monthlyDelays.printSchema();
         analysis.saveToCassandra(monthlyDelays, "flight_delay_analysis", "monthly_delay_stats","Monthly_Delay");
         analysis.saveToCassandra(avgAirportDelay,"flight_delay_analysis", "airport_delay_stats","Airport_Delay");
-//        // Read data from Cassandra
-//        Dataset<Row> dataset = spark.read()
-//                .format("org.apache.spark.sql.cassandra")
-//                .option("keyspace", "test")
-//                .option("table", "data")
-//                .load();
+        analysis.saveToCassandra(avgAirLineDelay,"flight_delay_analysis","airline_delay_stats","Airline_Delay");
 
-        // Show the data read from Cassandra
-        //dataset.show();
-
-        // Stop Spark session
         spark.stop();
     }
 
@@ -113,6 +137,20 @@ public class FlightDelayAnalysis {
                         avg("arr_delay_minutes").alias("average_arrival_delay"));
         return airportWithMaxDelay;
     }
+
+    public Dataset<Row> calculateAirLineDelay(Dataset<Row> df) {
+        Dataset<Row> airlineWithMaxDelay = df.groupBy(col("marketing_airline_network"))
+                .agg(avg("dep_delay_minutes").alias("average_departure_delay"),
+                        avg("arr_delay_minutes").alias("average_arrival_delay"),
+                        avg("carrier_delay").alias("average_carrier_delay"),
+                        avg("weather_delay").alias("average_weather_delay"),
+                        avg("nas_delay").alias("average_nas_delay"),
+                        avg("security_delay").alias("average_security_delay"),
+                        avg("late_aircraft_delay").alias("average_late_aircraft_delay"));
+        return airlineWithMaxDelay;
+    }
+
+
 
 
 
