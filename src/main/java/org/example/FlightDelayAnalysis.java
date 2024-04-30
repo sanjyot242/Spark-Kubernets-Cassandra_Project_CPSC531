@@ -63,13 +63,14 @@ public class FlightDelayAnalysis {
         Dataset<Row> df = analysis.loadDataAndInitialTransform(spark);
 
         df = analysis.addDerivedColumns(df);
+        //analysis.saveToCassandra(df,"flight_delay_analysis","cleaned_data","etl");
 
         Dataset<Row> reducedDf = df.select("flight_month","origin_city_name","marketing_airline_network", "carrier_delay", "weather_delay", "nas_delay", "security_delay", "late_aircraft_delay","dep_delay_minutes","arr_delay_minutes");
 
 
 
         //df.show(5);
-        //analysis.saveToCassandra(df,"flight_delay_analysis","cleaned_data","etl");
+
         Dataset<Row> monthlyDelays = analysis.calculateMonthlyAverageDelays(reducedDf);
         Dataset<Row> avgAirportDelay = analysis.calculateAirportWithMaxDelay(reducedDf);
         Dataset<Row> avgAirLineDelay = analysis.calculateAirLineDelay(reducedDf);
@@ -84,27 +85,21 @@ public class FlightDelayAnalysis {
 
     public Dataset<Row> loadDataAndInitialTransform(SparkSession spark) {
         Dataset<Row> df = spark.read().parquet("Flight_Delay.parquet");
+        df = df.drop("TaxiOut").drop("WheelsOff").drop("WheelsOn").drop("TaxiIn")
+                .drop("Distance").drop("DistanceGroup").drop("AirTime").drop("CRSDepTime")
+                .drop("CRSArrTime");
         df = df.withColumnRenamed("FlightDate","flight_date")
                 .withColumnRenamed("DepDelayMinutes","dep_delay_minutes")
                 .withColumnRenamed("OriginCityName","origin_city_name")
                 .withColumnRenamed("DestCityName","dest_city_name")
-                .withColumnRenamed("CRSDepTime","crs_dep_time")
                 .withColumnRenamed("DepTime","dep_time")
                 .withColumnRenamed("DepDelay","dep_delay")
-                .withColumnRenamed("TaxiOut","taxi_out")
-                .withColumnRenamed("WheelsOff","wheels_off")
-                .withColumnRenamed("WheelsOn","wheels_on")
-                .withColumnRenamed("TaxiIn","taxi_in")
                 .withColumnRenamed("ArrDelayMinutes","arr_delay_minutes")
-                .withColumnRenamed("CRSArrTime","crs_arr_time")
-                .withColumnRenamed("ArrTime","arr_time")///
+                .withColumnRenamed("ArrTime","arr_time")
                 .withColumnRenamed("ArrDelay","arr_delay")
                 .withColumnRenamed("ArrDelayMinutes","arr_delay_minutes")
                 .withColumnRenamed("CRSElapsedTime","crs_elapsed_time")
                 .withColumnRenamed("ActualElapsedTime","actual_elapsed_time")
-                .withColumnRenamed("AirTime","air_time")
-                .withColumnRenamed("Distance","distance")
-                .withColumnRenamed("DistanceGroup","distance_group")
                 .withColumnRenamed("CarrierDelay","carrier_delay")
                 .withColumnRenamed("WeatherDelay","weather_delay")
                 .withColumnRenamed("NASDelay","nas_delay")

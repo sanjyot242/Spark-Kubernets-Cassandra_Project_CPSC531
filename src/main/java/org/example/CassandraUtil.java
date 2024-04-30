@@ -84,29 +84,20 @@ public class CassandraUtil {
         CreateTableWithOptions createTable = SchemaBuilder.createTable(keyspace, tableName)
                 .ifNotExists()
                 .withPartitionKey("year", DataTypes.INT) // Year: converting long to int
-                .withColumn("month", DataTypes.INT) // Month: already integer
-                .withColumn("day_of_month", DataTypes.INT)
+                .withPartitionKey("month", DataTypes.INT) // Month: already integer
+                .withPartitionKey("day_of_month", DataTypes.INT)
                 .withColumn("flight_date", DataTypes.DATE) // flight_date: date
                 .withColumn("marketing_airline_network", DataTypes.TEXT) // Marketing_Airline_Network: string
                 .withColumn("origin_city_name", DataTypes.TEXT) // OriginCityName: string
                 .withColumn("dest_city_name", DataTypes.TEXT) // DestCityName: string
-                .withColumn("crs_dep_time", DataTypes.BIGINT) // CRSDepTime: long
                 .withColumn("dep_time", DataTypes.DOUBLE) // DepTime: double
                 .withColumn("dep_delay", DataTypes.DOUBLE) // DepDelay: double
                 .withColumn("dep_delay_minutes", DataTypes.DOUBLE) // dep_delay_minutes: double
-                .withColumn("taxi_out", DataTypes.DOUBLE) // TaxiOut: double
-                .withColumn("wheels_off", DataTypes.DOUBLE) // WheelsOff: double
-                .withColumn("wheels_on", DataTypes.DOUBLE) // WheelsOn: double
-                .withColumn("taxi_in", DataTypes.DOUBLE) // TaxiIn: double
-                .withColumn("crs_arr_time", DataTypes.BIGINT) // CRSArrTime: long
                 .withColumn("arr_time", DataTypes.DOUBLE) // ArrTime: double
                 .withColumn("arr_delay", DataTypes.DOUBLE) // ArrDelay: double
                 .withColumn("arr_delay_minutes", DataTypes.DOUBLE) // arr_delay_minutes: double
                 .withColumn("crs_elapsed_time", DataTypes.DOUBLE) // CRSElapsedTime: double
                 .withColumn("actual_elapsed_time", DataTypes.DOUBLE) // ActualElapsedTime: double
-                .withColumn("air_time", DataTypes.DOUBLE) // AirTime: double
-                .withColumn("distance", DataTypes.DOUBLE) // Distance: double
-                .withColumn("distance_group", DataTypes.BIGINT) // DistanceGroup: long
                 .withColumn("carrier_delay", DataTypes.DOUBLE) // CarrierDelay: double
                 .withColumn("weather_delay", DataTypes.DOUBLE) // WeatherDelay: double
                 .withColumn("nas_delay", DataTypes.DOUBLE) // NASDelay: double
