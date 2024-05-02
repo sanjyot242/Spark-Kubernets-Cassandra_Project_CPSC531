@@ -6,7 +6,7 @@
 --driver-cores 1 \
 --executor-memory 3g \
 --executor-cores 3 \
-FlightDelayAnalysis-1.0-SNAPSHOT.jar "10.244.0.6" "9042"
+FlightDelayAnalysis-1.0-SNAPSHOT.jar "10.244.0.5" "9042"
 
 
 

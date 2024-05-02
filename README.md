@@ -3,6 +3,9 @@
 
 This project leverages the power of Kubernetes, Apache Spark, and Cassandra to analyze airline performance and flight delays. We use `.parquet` files as our primary data format.
 
+## Architecture Diagram 
+![img.png](img.png)
+
 ## Prerequisites 📋
 
 Ensure you have `kubectl`, `minikube`, and `helm` installed on your local machine to execute the steps outlined below.

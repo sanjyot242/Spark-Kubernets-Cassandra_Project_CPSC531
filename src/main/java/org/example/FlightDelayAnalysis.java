@@ -27,34 +27,7 @@ public class FlightDelayAnalysis {
                 .config(conf)
                 .getOrCreate();
 
-//        spark.udf().register("airlineFullName", (String abbreviation) -> {
-//            switch (abbreviation) {
-//                case "UA":
-//                    return "United Airlines";
-//                case "DL":
-//                    return "Delta Airlines";
-//                case "F9":
-//                    return "Frontier Airlines";
-//                case "NK":
-//                    return "Spirit Airlines";
-//                case "AA":
-//                    return "American Airlines";
-//                case "WN":
-//                    return "Southwest Airlines";
-//                case "AS":
-//                    return "Alaska Airlines";
-//                case "HA":
-//                    return "Hawaiian Airlines";
-//                case "VX":
-//                    return "Virgin America";
-//                case "B6":
-//                    return "JetBlue Airways";
-//                case "G4":
-//                    return "Allegiant Air";
-//                default:
-//                    return abbreviation; // Return the abbreviation if not found
-//            }
-//        }, DataTypes.StringType);
+
 
         //spark.sparkContext().setLogLevel("DEBUG");
 
