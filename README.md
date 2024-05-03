@@ -90,7 +90,8 @@ Use Cassandra port forwarding to access Cassandra from outside the cluster, then
 # Example Python script to plot data
 python plot_results.py
 ```
-
+## Result
+![graphs.png](..%2F..%2FDownloads%2Fgraphs.png)
 ## Conclusion 🎉
 
 This project sets up a robust data processing pipeline using Kubernetes, Spark, and Cassandra to analyze and visualize airline performance and delay patterns effectively. For feedback and contributions, feel free to open an issue or pull request.
